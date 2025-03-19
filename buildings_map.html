@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Building Map - Lampang, Thailand</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    #header {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+    }
+    #container {
+      display: flex;
+      flex: 1;
+    }
+    #map {
+      flex: 1;
+      height: 100%;
+    }
+    #panel {
+      width: 300px;
+      padding: 20px;
+      background-color: #f5f5f5;
+      overflow-y: auto;
+    }
+    .legend {
+      margin-top: 20px;
+      background-color: white;
+      padding: 10px;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 5px 0;
+    }
+    .legend-color {
+      width: 20px;
+      height: 15px;
+      margin-right: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      margin-top: 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #loading {
+      position: absolute;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.9);
+      padding: 8px 15px;
+      border-radius: 4px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      z-index: 1000;
+    }
+    .stats-panel {
+      margin-top: 15px;
+      background-color: white;
+      padding: 10px;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .filter-control {
+      margin: 10px 0;
+    }
+    .filter-control label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    .filter-control select,
+    .filter-control input {
+      width: 100%;
+      padding: 5px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+  </style>
+  
+  <!-- Load Google Maps JavaScript API with drawing library -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAUo3ivl-Garf_7Aa4tuHZP_OhqY9o1xgg&libraries=visualization,drawing"></script>
+  
+  <!-- Load Chart.js for graph creation -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+</head>
+<body>
+  <div id="header">
+    <h1>Building Map - Lampang, Thailand</h1>
+  </div>
+  
+  <div id="container">
+    <div id="map"></div>
+    <div id="panel">
+      <h2>Building Information</h2>
+      <div class="stats-panel">
+        <p>Total Buildings: <span id="totalBuildings">Loading...</span></p>
+        <p>Area: Lampang Province, Thailand</p>
+        <p>Average Area: <span id="avgArea">Loading...</span> sq.m.</p>
+        <p>Displayed Buildings: <span id="displayedBuildings">0</span></p>
+      </div>
+      
+      <div class="filter-control">
+        <label for="regionSelect">Select District:</label>
+        <select id="regionSelect">
+          <option value="mueang">อำเภอเมืองลำปาง</option>
+          <option value="mae_moh">อำเภอแม่เมาะ</option>
+          <option value="ko_kha">อำเภอเกาะคา</option>
+          <option value="soem_ngam">อำเภอเสริมงาม</option>
+          <option value="ngao">อำเภองาว</option>
+          <option value="chae_hom">อำเภอแจ้ห่ม</option>
+          <option value="wang_nuea">อำเภอวังเหนือ</option>
+          <option value="thoen">อำเภอเถิน</option>
+          <option value="mae_phrik">อำเภอแม่พริก</option>
+          <option value="mae_tha">อำเภอแม่ทะ</option>
+          <option value="sop_prap">อำเภอสบปราบ</option>
+          <option value="hang_chat">อำเภอห้างฉัตร</option>
+          <option value="mueang_pan">อำเภอเมืองปาน</option>
+        </select>
+      </div>
+      
+      <div class="filter-control">
+        <label for="confidenceFilter">Minimum Confidence:</label>
+        <input type="range" id="confidenceFilter" min="0.65" max="0.9" step="0.05" value="0.65">
+        <span id="confidenceValue">0.65</span>
+      </div>
+      
+      <div class="legend">
+        <h3>Building Confidence Levels</h3>
+        <div class="legend-item">
+          <div class="legend-color" style="background-color: #00FF00;"></div>
+          <span>High (≥0.75)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background-color: #FFFF00;"></div>
+          <span>Medium (0.7-0.75)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background-color: #FF0000;"></div>
+          <span>Low (0.65-0.7)</span>
+        </div>
+      </div>
+      
+      <div style="margin-top: 20px;">
+        <button id="toggleLayers">Toggle Buildings</button>
+        <button id="zoomToLampang">Center Map</button>
+        <!-- <button id="loadAllData">Load Data</button> -->
+      </div>
+      
+      <!-- <div class="stats-panel">
+        <h3>Grid Information</h3>
+        <p>Total Grid Cells: <span id="cellGridInfo">Not loaded</span></p>
+        <p>Loaded Cells: <span id="loadedCellCount">0</span></p>
+      </div> -->
+    </div>
+  </div>
+  
+  <div id="loading">Loading building data...</div>
+  
+  <script>
+    // Variables for map and layers
+    let map;
+    let buildingData = [];
+    let filteredData = [];
+    let currentPolygons = [];
+    let buildingsVisible = true;
+    let shouldLoadData = true; // Add new variable to track if data should be loaded
+    let districtCoordinates = {
+      mueang: { lat: 18.288739, lng: 99.490685 }, // อำเภอเมืองลำปาง
+      mae_moh: { lat: 18.272030, lng: 99.650448 }, // อำเภอแม่เมาะ
+      ko_kha: { lat: 18.198498, lng: 99.405333 }, // อำเภอเกาะคา
+      soem_ngam: { lat: 18.004411, lng: 99.189733 }, // อำเภอเสริมงาม
+      ngao: { lat: 18.751827, lng: 99.980173 }, // อำเภองาว
+      chae_hom: { lat: 18.706860, lng: 99.570461 }, // อำเภอแจ้ห่ม
+      wang_nuea: { lat: 19.144299, lng: 99.619904 }, // อำเภอวังเหนือ
+      thoen: { lat: 17.604020, lng: 99.206932 }, // อำเภอเถิน
+      mae_phrik: { lat: 17.447601, lng: 99.119065 }, // อำเภอแม่พริก
+      mae_tha: { lat: 18.157158, lng: 99.537249 }, // อำเภอแม่ทะ
+      sop_prap: { lat: 17.880487, lng: 99.338276 }, // อำเภอสบปราบ
+      hang_chat: { lat: 18.327890, lng: 99.345729 }, // อำเภอห้างฉัตร
+      mueang_pan: { lat: 18.765712, lng: 99.518122 }  // อำเภอเมืองปาน
+    };
+    let mapBounds = {
+      default: { north: 18.3023, south: 18.2823, east: 99.5028, west: 99.4828 },
+      north: { north: 18.3223, south: 18.3023, east: 99.5028, west: 99.4828 },
+      south: { north: 18.2823, south: 18.2623, east: 99.5028, west: 99.4828 },
+      east: { north: 18.3023, south: 18.2823, east: 99.5228, west: 99.5028 },
+      west: { north: 18.3023, south: 18.2823, east: 99.4828, west: 99.4628 },
+      custom: null
+    };
+    let gridMetadata = null;
+    let loadedCells = new Set();
+    const gridSize = 0.1; // Same grid size as used in Python script
+    
+    // Add variable for debouncing
+    let mapMoveTimer = null;
+    const DEBOUNCE_DELAY = 5000; // 5 seconds delay
+    
+    // Add variables to track loading state and cancellation
+    let isLoading = false;
+    let loadingCancelled = false;
+    let currentLoadingPromises = [];
+    
+    // Function to stop all loading operations
+    function stopLoading() {
+      loadingCancelled = true;
+      document.getElementById('loading').textContent = "Loading cancelled - map moved";
+      
+      // Clear current loading promises
+      currentLoadingPromises = [];
+      
+      // Display status after a short delay
+      setTimeout(() => {
+        if (shouldLoadData) {
+          document.getElementById('loading').textContent = "Map idle - waiting for 5 seconds";
+        } else {
+          document.getElementById('loading').textContent = "Buildings hidden - loading paused";
+        }
+        loadingCancelled = false;
+      }, 1000);
+    }
+    
+    // Initialize map
+    function initMap() {
+      // Coordinates for Lampang, Thailand
+      const lampangCoordinates = { lat: 18.2923, lng: 99.4928 };
+      
+      // Create new Google Map
+      map = new google.maps.Map(document.getElementById('map'), {
+        center: lampangCoordinates,
+        zoom: 17,
+        mapTypeId: 'satellite'
+      });
+
+      // Set initial status
+      document.getElementById('loading').textContent = "Loading grid metadata...";
+      
+      // Load grid_metadata.json
+      loadGridMetadata();
+      
+      // Add event listener for map bounds changes with debouncing
+      map.addListener('bounds_changed', () => {
+        // If currently loading, stop the loading
+        if (isLoading) {
+          stopLoading();
+        }
+        
+        // Show loading indicator with special message
+        document.getElementById('loading').textContent = shouldLoadData ? 
+          "Map moving... data will load 5 seconds after you stop" : 
+          "Buildings hidden - loading paused";
+        
+        // Clear previous timer
+        if (mapMoveTimer) {
+          clearTimeout(mapMoveTimer);
+        }
+        
+        // Set new timer only if buildings are visible
+        if (shouldLoadData) {
+          mapMoveTimer = setTimeout(() => {
+            // Update loading message
+            document.getElementById('loading').textContent = "Loading building data...";
+            
+            // Process data after debounce delay
+            if (gridMetadata) {
+              loadVisibleCells();
+            }
+            updateMapDisplay();
+          }, DEBOUNCE_DELAY);
+        }
+      });
+    }
+
+    // Load grid_metadata.json
+    async function loadGridMetadata() {
+      try {
+        const response = await fetch('data/grid_cells/grid_metadata.json');
+        gridMetadata = await response.json();
+        
+        // Update statistics
+        document.getElementById('totalBuildings').textContent = gridMetadata.totalFeatures;
+        document.getElementById('cellGridInfo').textContent = Object.keys(gridMetadata.cells).length;
+        
+        // Update status
+        document.getElementById('loading').textContent = "Loading visible cells...";
+        
+        // Load visible cells
+        loadVisibleCells();
+      } catch (error) {
+        console.error('Error loading grid_metadata.json:', error);
+        document.getElementById('loading').textContent = "Error loading grid metadata";
+      }
+    }
+
+    // Find visible cells in map
+    function getVisibleCells() {
+      const bounds = map.getBounds();
+      const visibleCells = [];
+      
+      for (const [cellId, cellData] of Object.entries(gridMetadata.cells)) {
+        const cellBounds = cellData.bounds;
+        
+        if (bounds.intersects(new google.maps.LatLngBounds(
+          new google.maps.LatLng(cellBounds.south, cellBounds.west),
+          new google.maps.LatLng(cellBounds.north, cellBounds.east)
+        ))) {
+          visibleCells.push(cellId);
+        }
+      }
+      
+      return visibleCells;
+    }
+
+    // Load visible cell data
+    async function loadVisibleCells() {
+      // If buildings are hidden, don't load data
+      if (!shouldLoadData) {
+        document.getElementById('loading').textContent = "Buildings hidden - loading paused";
+        return;
+      }
+      
+      // Reset cancellation flag at the start of loading
+      loadingCancelled = false;
+      isLoading = true;
+      currentLoadingPromises = [];
+      
+      const visibleCells = getVisibleCells();
+      const cellsToLoad = visibleCells.filter(cellId => !loadedCells.has(cellId));
+      
+      if (cellsToLoad.length === 0) {
+        document.getElementById('loading').textContent = "All visible cells loaded";
+        isLoading = false;
+        return;
+      }
+      
+      document.getElementById('loading').textContent = `Loading ${cellsToLoad.length} cells...`;
+      
+      try {
+        for (const cellId of cellsToLoad) {
+          // Check if loading was cancelled or buildings were hidden
+          if (loadingCancelled || !shouldLoadData) {
+            break;
+          }
+          document.getElementById('loading').textContent = `Loading cell ${cellId}...`;
+          await loadCellData(cellId);
+        }
+      } finally {
+        // Update status when loading completes or cancels
+        if (!loadingCancelled && shouldLoadData) {
+          document.getElementById('loading').textContent = "All visible cells loaded";
+        } else if (!shouldLoadData) {
+          document.getElementById('loading').textContent = "Buildings hidden - loading paused";
+        }
+        document.getElementById('loadedCellCount').textContent = loadedCells.size;
+        isLoading = false;
+      }
+    }
+
+    // Load cell data
+    async function loadCellData(cellId) {
+      // Skip if loading was cancelled
+      if (loadingCancelled) {
+        return;
+      }
+      
+      try {
+        const cellData = gridMetadata.cells[cellId];
+        
+        // Create fetch promise
+        const fetchPromise = fetch(`data/grid_cells/${cellData.filename}`)
+          .then(response => response.json())
+          .then(geojsonData => {
+            // Skip processing if loading was cancelled
+            if (loadingCancelled) {
+              return;
+            }
+            
+            // Add buildings to buildingData
+            buildingData.push(...geojsonData.features);
+            
+            // Update display
+            updateMapDisplay();
+            
+            // Mark cell as loaded
+            loadedCells.add(cellId);
+          });
+        
+        // Add to current promises
+        currentLoadingPromises.push(fetchPromise);
+        
+        // Wait for this fetch to complete
+        await fetchPromise;
+      } catch (error) {
+        if (!loadingCancelled) {
+          console.error(`Error loading cell ${cellId}:`, error);
+        }
+      }
+    }
+
+    // Update map display
+    function updateMapDisplay() {
+      // Remove old buildings
+      currentPolygons.forEach(polygon => polygon.setMap(null));
+      currentPolygons = [];
+      
+      // Filter data by confidence
+      const confidenceThreshold = parseFloat(document.getElementById('confidenceFilter').value);
+      filteredData = buildingData.filter(feature => 
+        feature.properties.confidence >= confidenceThreshold
+      );
+      
+      // Get current viewport bounds
+      const bounds = map.getBounds();
+      
+      // Counter for buildings actually visible in the viewport
+      let visibleBuildingsCount = 0;
+      
+      // Draw new buildings
+      filteredData.forEach(feature => {
+        // Check if building is in current viewport
+        const isVisible = isBuildingInViewport(feature, bounds);
+        
+        const coordinates = feature.geometry.coordinates[0].map(coord => ({
+          lat: coord[1],
+          lng: coord[0]
+        }));
+        
+        const polygon = new google.maps.Polygon({
+          paths: coordinates,
+          strokeColor: getColorByConfidence(feature.properties.confidence),
+          strokeOpacity: 0.8,
+          strokeWeight: 1,
+          fillColor: getColorByConfidence(feature.properties.confidence),
+          fillOpacity: 0.35,
+          map: buildingsVisible ? map : null
+        });
+        
+        currentPolygons.push(polygon);
+        
+        // Count only buildings visible in the viewport
+        if (isVisible && buildingsVisible) {
+          visibleBuildingsCount++;
+        }
+      });
+      
+      // Update displayed buildings count (only those in viewport)
+      document.getElementById('displayedBuildings').textContent = visibleBuildingsCount;
+      
+      // Calculate average area
+      const totalArea = filteredData.reduce((sum, feature) => 
+        sum + feature.properties.area, 0);
+      const avgArea = filteredData.length > 0 ? 
+        (totalArea / filteredData.length).toFixed(2) : 0;
+      document.getElementById('avgArea').textContent = avgArea;
+    }
+
+    // Function to check if a building is within the current viewport
+    function isBuildingInViewport(feature, bounds) {
+      // For polygon features
+      if (feature.geometry.type === 'Polygon' && feature.geometry.coordinates && feature.geometry.coordinates.length > 0) {
+        // Check if any point of the polygon is within the viewport
+        for (const coord of feature.geometry.coordinates[0]) {
+          const lng = coord[0];
+          const lat = coord[1];
+          
+          if (bounds.contains(new google.maps.LatLng(lat, lng))) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    // Get color based on confidence level
+    function getColorByConfidence(confidence) {
+      if (confidence >= 0.75) return '#00FF00';
+      if (confidence >= 0.7) return '#FFFF00';
+      return '#FF0000';
+    }
+
+    // Add event listeners
+    document.getElementById('confidenceFilter').addEventListener('input', function(e) {
+      // Only update the displayed value when sliding
+      document.getElementById('confidenceValue').textContent = e.target.value;
+    });
+    
+    // Add event for when the user finishes sliding
+    document.getElementById('confidenceFilter').addEventListener('change', function() {
+      // Process buildings only when user releases the slider
+      document.getElementById('loading').textContent = "Applying confidence filter...";
+      updateMapDisplay();
+    });
+    
+    // Add mouseup and touchend events for more responsive experience
+    document.getElementById('confidenceFilter').addEventListener('mouseup', function() {
+      // Process buildings when mouse is released
+      document.getElementById('loading').textContent = "Applying confidence filter...";
+      updateMapDisplay();
+    });
+    
+    document.getElementById('confidenceFilter').addEventListener('touchend', function() {
+      // Process buildings when touch ends (for mobile)
+      document.getElementById('loading').textContent = "Applying confidence filter...";
+      updateMapDisplay();
+    });
+
+    document.getElementById('toggleLayers').addEventListener('click', function() {
+      buildingsVisible = !buildingsVisible;
+      shouldLoadData = buildingsVisible; // Update shouldLoadData based on visibility
+      
+      // Update building display
+      currentPolygons.forEach(polygon => 
+        polygon.setMap(buildingsVisible ? map : null));
+      
+      // Update button text
+      this.textContent = buildingsVisible ? 'Hide Buildings' : 'Show Buildings';
+      
+      // Update loading status
+      if (buildingsVisible) {
+        document.getElementById('loading').textContent = "Buildings visible - loading data...";
+        // Load data if buildings are now visible
+        if (gridMetadata) {
+          // Clear any pending timers
+          if (mapMoveTimer) {
+            clearTimeout(mapMoveTimer);
+          }
+          loadVisibleCells();
+          updateMapDisplay();
+        }
+      } else {
+        document.getElementById('loading').textContent = "Buildings hidden - loading paused";
+        // Cancel any ongoing loading
+        if (isLoading) {
+          stopLoading();
+        }
+      }
+    });
+
+    document.getElementById('zoomToLampang').addEventListener('click', function() {
+      map.setCenter({ lat: 18.2923, lng: 99.4928 });
+      map.setZoom(17);
+    });
+
+    document.getElementById('regionSelect').addEventListener('change', function() {
+      const selectedDistrict = this.value;
+      if (selectedDistrict && districtCoordinates[selectedDistrict]) {
+        // If currently loading, stop the loading
+        if (isLoading) {
+          stopLoading();
+        }
+        
+        // Center map to selected district
+        map.setCenter(districtCoordinates[selectedDistrict]);
+        map.setZoom(17);
+        
+        // Clear any pending timers
+        if (mapMoveTimer) {
+          clearTimeout(mapMoveTimer);
+        }
+        
+        // Only load data if buildings are visible
+        if (shouldLoadData) {
+          // Show loading indicator
+          document.getElementById('loading').textContent = `Loading ${selectedDistrict} district...`;
+          
+          // Load visible cells immediately when user selects a district
+          loadVisibleCells();
+          updateMapDisplay();
+        } else {
+          document.getElementById('loading').textContent = "Buildings hidden - loading paused";
+        }
+      }
+    });
+
+    // Initialize map when page loads
+    window.onload = initMap;
+  </script>
+</body>
+</html> 

@@ -120,21 +120,16 @@
       </div>
       
       <div class="filter-control">
-        <label for="regionSelect">Select District:</label>
+        <label for="regionSelect">Select Sub-district (ตำบล):</label>
         <select id="regionSelect">
-          <option value="mueang">อำเภอเมืองลำปาง</option>
-          <option value="mae_moh">อำเภอแม่เมาะ</option>
-          <option value="ko_kha">อำเภอเกาะคา</option>
-          <option value="soem_ngam">อำเภอเสริมงาม</option>
-          <option value="ngao">อำเภองาว</option>
-          <option value="chae_hom">อำเภอแจ้ห่ม</option>
-          <option value="wang_nuea">อำเภอวังเหนือ</option>
-          <option value="thoen">อำเภอเถิน</option>
-          <option value="mae_phrik">อำเภอแม่พริก</option>
-          <option value="mae_tha">อำเภอแม่ทะ</option>
-          <option value="sop_prap">อำเภอสบปราบ</option>
-          <option value="hang_chat">อำเภอห้างฉัตร</option>
-          <option value="mueang_pan">อำเภอเมืองปาน</option>
+          <option value="wiang_nuea">ตำบลเวียงเหนือ</option>
+          <option value="bo_haeo">ตำบลบ่อแฮ้ว</option>
+          <option value="pichai">ตำบลพิชัย</option>
+          <option value="sob_tui">ตำบลสบตุ๋ย</option>
+          <option value="suan_dok">ตำบลสวนดอก</option>
+          <option value="hua_wiang">ตำบลหัวเวียง</option>
+          <option value="phra_bat">ตำบลพระบาท</option>
+          <option value="chomphu">ตำบลชมพู</option>
         </select>
       </div>
       
@@ -185,19 +180,14 @@
     let buildingsVisible = true;
     let shouldLoadData = true; // Add new variable to track if data should be loaded
     let districtCoordinates = {
-      mueang: { lat: 18.288739, lng: 99.490685 }, // อำเภอเมืองลำปาง
-      mae_moh: { lat: 18.272030, lng: 99.650448 }, // อำเภอแม่เมาะ
-      ko_kha: { lat: 18.198498, lng: 99.405333 }, // อำเภอเกาะคา
-      soem_ngam: { lat: 18.004411, lng: 99.189733 }, // อำเภอเสริมงาม
-      ngao: { lat: 18.751827, lng: 99.980173 }, // อำเภองาว
-      chae_hom: { lat: 18.706860, lng: 99.570461 }, // อำเภอแจ้ห่ม
-      wang_nuea: { lat: 19.144299, lng: 99.619904 }, // อำเภอวังเหนือ
-      thoen: { lat: 17.604020, lng: 99.206932 }, // อำเภอเถิน
-      mae_phrik: { lat: 17.447601, lng: 99.119065 }, // อำเภอแม่พริก
-      mae_tha: { lat: 18.157158, lng: 99.537249 }, // อำเภอแม่ทะ
-      sop_prap: { lat: 17.880487, lng: 99.338276 }, // อำเภอสบปราบ
-      hang_chat: { lat: 18.327890, lng: 99.345729 }, // อำเภอห้างฉัตร
-      mueang_pan: { lat: 18.765712, lng: 99.518122 }  // อำเภอเมืองปาน
+      wiang_nuea: { lat: 18.298552, lng: 99.503569 }, // ตำบลเวียงเหนือ
+      bo_haeo: { lat: 18.310556, lng: 99.455633 }, // ตำบลบ่อแฮ้ว
+      pichai: { lat: 18.332385, lng: 99.538357 }, // ตำบลพิชัย
+      sob_tui: { lat: 18.283514, lng: 99.475994 }, // ตำบลสบตุ๋ย
+      suan_dok: { lat: 18.287024, lng: 99.494056 }, // ตำบลสวนดอก
+      hua_wiang: { lat: 18.292923, lng: 99.512701 }, // ตำบลหัวเวียง
+      phra_bat: { lat: 18.282265, lng: 99.510365 }, // ตำบลพระบาท
+      chomphu: { lat: 18.244720, lng: 99.443974 }, // ตำบลชมพู
     };
     let mapBounds = {
       default: { north: 18.3023, south: 18.2823, east: 99.5028, west: 99.4828 },
@@ -210,6 +200,52 @@
     let gridMetadata = null;
     let loadedCells = new Set();
     const gridSize = 0.1; // Same grid size as used in Python script
+    
+    // Add variables for district boundaries
+    let currentBoundaryPolygon = null;
+    let currentBoundaryPolyline = null;
+    let districtBoundaries = {
+      wiang_nuea: [
+        {lat: 18.310521, lng: 99.495645}, {lat: 18.307325, lng: 99.512083},
+        {lat: 18.291542, lng: 99.517362}, {lat: 18.286452, lng: 99.502213},
+        {lat: 18.293521, lng: 99.493758}, {lat: 18.310521, lng: 99.495645}
+      ],
+      bo_haeo: [
+        {lat: 18.327589, lng: 99.452713}, {lat: 18.318762, lng: 99.472411},
+        {lat: 18.296534, lng: 99.468891}, {lat: 18.295642, lng: 99.445631},
+        {lat: 18.317821, lng: 99.436562}, {lat: 18.327589, lng: 99.452713}
+      ],
+      pichai: [
+        {lat: 18.342517, lng: 99.529231}, {lat: 18.335682, lng: 99.552621},
+        {lat: 18.319845, lng: 99.547128}, {lat: 18.322681, lng: 99.525498},
+        {lat: 18.342517, lng: 99.529231}
+      ],
+      sob_tui: [
+        {lat: 18.290251, lng: 99.468751}, {lat: 18.289651, lng: 99.486732},
+        {lat: 18.276548, lng: 99.486218}, {lat: 18.277231, lng: 99.467892},
+        {lat: 18.290251, lng: 99.468751}
+      ],
+      suan_dok: [
+        {lat: 18.294587, lng: 99.490128}, {lat: 18.293125, lng: 99.501743},
+        {lat: 18.279651, lng: 99.498967}, {lat: 18.281072, lng: 99.487638},
+        {lat: 18.294587, lng: 99.490128}
+      ],
+      hua_wiang: [
+        {lat: 18.298752, lng: 99.508562}, {lat: 18.296872, lng: 99.521652},
+        {lat: 18.285632, lng: 99.518732}, {lat: 18.287512, lng: 99.505642},
+        {lat: 18.298752, lng: 99.508562}
+      ],
+      phra_bat: [
+        {lat: 18.285724, lng: 99.500532}, {lat: 18.283152, lng: 99.523628},
+        {lat: 18.268732, lng: 99.519832}, {lat: 18.271304, lng: 99.496736},
+        {lat: 18.285724, lng: 99.500532}
+      ],
+      chomphu: [
+        {lat: 18.259832, lng: 99.436218}, {lat: 18.255652, lng: 99.452582},
+        {lat: 18.235721, lng: 99.449835}, {lat: 18.238912, lng: 99.433471},
+        {lat: 18.259832, lng: 99.436218}
+      ]
+    };
     
     // Add variable for debouncing
     let mapMoveTimer = null;
@@ -247,7 +283,7 @@
       // Create new Google Map
       map = new google.maps.Map(document.getElementById('map'), {
         center: lampangCoordinates,
-        zoom: 17,
+        zoom: 16,
         mapTypeId: 'satellite'
       });
 
@@ -557,7 +593,7 @@
 
     document.getElementById('zoomToLampang').addEventListener('click', function() {
       map.setCenter({ lat: 18.2923, lng: 99.4928 });
-      map.setZoom(17);
+      map.setZoom(16);
     });
 
     document.getElementById('regionSelect').addEventListener('change', function() {
@@ -577,6 +613,9 @@
           clearTimeout(mapMoveTimer);
         }
         
+        // Draw district boundary
+        drawDistrictBoundary(selectedDistrict);
+        
         // Only load data if buildings are visible
         if (shouldLoadData) {
           // Show loading indicator
@@ -590,6 +629,69 @@
         }
       }
     });
+
+    // Function to draw district boundary
+    function drawDistrictBoundary(districtId) {
+      // Remove previous boundary if exists
+      if (currentBoundaryPolygon) {
+        currentBoundaryPolygon.setMap(null);
+      }
+      if (currentBoundaryPolyline) {
+        currentBoundaryPolyline.setMap(null);
+      }
+      
+      // Draw new boundary
+      if (districtBoundaries[districtId]) {
+        // Create polygon for fill
+        currentBoundaryPolygon = new google.maps.Polygon({
+          paths: districtBoundaries[districtId],
+          strokeColor: '#FF0000',
+          strokeOpacity: 0,
+          strokeWeight: 0,
+          fillColor: '#FF0000',
+          fillOpacity: 0.05,
+          map: map
+        });
+        
+        // Create polyline for dotted border
+        const coordinates = [...districtBoundaries[districtId]];
+        // Add the first point at the end to close the loop
+        coordinates.push(coordinates[0]);
+        
+        currentBoundaryPolyline = new google.maps.Polyline({
+          path: coordinates,
+          geodesic: true,
+          strokeColor: '#FF0000',
+          strokeOpacity: 0,
+          strokeWeight: 0,
+          icons: [{
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              fillColor: '#FF0000',
+              fillOpacity: 1,
+              scale: 1.2
+            },
+            offset: '0',
+            repeat: '7px'
+          }],
+          map: map
+        });
+        
+        // Adjust zoom level to see the entire sub-district
+        const bounds = new google.maps.LatLngBounds();
+        for (const point of districtBoundaries[districtId]) {
+          bounds.extend(point);
+        }
+        
+        // Add some padding to the bounds
+        map.fitBounds(bounds, {
+          top: 50,
+          right: 50,
+          bottom: 50,
+          left: 50
+        });
+      }
+    }
 
     // Initialize map when page loads
     window.onload = initMap;

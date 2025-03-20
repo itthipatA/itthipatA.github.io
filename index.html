@@ -171,23 +171,25 @@
   
   <div id="loading">Loading building data...</div>
   
+  <script src="districtBoudaries.js"></script>
   <script>
     // Variables for map and layers
     let map;
     let buildingData = [];
     let filteredData = [];
     let currentPolygons = [];
+    let districtPolygons = [];
     let buildingsVisible = true;
     let shouldLoadData = true; // Add new variable to track if data should be loaded
     let districtCoordinates = {
       wiang_nuea: { lat: 18.298552, lng: 99.503569 }, // ตำบลเวียงเหนือ
-      bo_haeo: { lat: 18.310556, lng: 99.455633 }, // ตำบลบ่อแฮ้ว
-      pichai: { lat: 18.332385, lng: 99.538357 }, // ตำบลพิชัย
+      bo_haeo: { lat: 18.297587, lng: 99.476131}, // ตำบลบ่อแฮ้ว 18.297587, 99.476131
+      pichai: { lat: 18.291660, lng: 99.519819 }, // ตำบลพิชัย 18.291660, 99.519819
       sob_tui: { lat: 18.283514, lng: 99.475994 }, // ตำบลสบตุ๋ย
       suan_dok: { lat: 18.287024, lng: 99.494056 }, // ตำบลสวนดอก
-      hua_wiang: { lat: 18.292923, lng: 99.512701 }, // ตำบลหัวเวียง
-      phra_bat: { lat: 18.282265, lng: 99.510365 }, // ตำบลพระบาท
-      chomphu: { lat: 18.244720, lng: 99.443974 }, // ตำบลชมพู
+      hua_wiang: { lat: 18.288850, lng: 99.507367 }, // ตำบลหัวเวียง 18.288850, 99.507367
+      phra_bat: { lat: 18.273957, lng: 99.501219 }, // ตำบลพระบาท 18.273957, 99.501219
+      chomphu: { lat: 18.266612, lng: 99.469222 }, // ตำบลชมพู 18.266612, 99.469222
     };
     let mapBounds = {
       default: { north: 18.3023, south: 18.2823, east: 99.5028, west: 99.4828 },
@@ -204,48 +206,8 @@
     // Add variables for district boundaries
     let currentBoundaryPolygon = null;
     let currentBoundaryPolyline = null;
-    let districtBoundaries = {
-      wiang_nuea: [
-        {lat: 18.310521, lng: 99.495645}, {lat: 18.307325, lng: 99.512083},
-        {lat: 18.291542, lng: 99.517362}, {lat: 18.286452, lng: 99.502213},
-        {lat: 18.293521, lng: 99.493758}, {lat: 18.310521, lng: 99.495645}
-      ],
-      bo_haeo: [
-        {lat: 18.327589, lng: 99.452713}, {lat: 18.318762, lng: 99.472411},
-        {lat: 18.296534, lng: 99.468891}, {lat: 18.295642, lng: 99.445631},
-        {lat: 18.317821, lng: 99.436562}, {lat: 18.327589, lng: 99.452713}
-      ],
-      pichai: [
-        {lat: 18.342517, lng: 99.529231}, {lat: 18.335682, lng: 99.552621},
-        {lat: 18.319845, lng: 99.547128}, {lat: 18.322681, lng: 99.525498},
-        {lat: 18.342517, lng: 99.529231}
-      ],
-      sob_tui: [
-        {lat: 18.290251, lng: 99.468751}, {lat: 18.289651, lng: 99.486732},
-        {lat: 18.276548, lng: 99.486218}, {lat: 18.277231, lng: 99.467892},
-        {lat: 18.290251, lng: 99.468751}
-      ],
-      suan_dok: [
-        {lat: 18.294587, lng: 99.490128}, {lat: 18.293125, lng: 99.501743},
-        {lat: 18.279651, lng: 99.498967}, {lat: 18.281072, lng: 99.487638},
-        {lat: 18.294587, lng: 99.490128}
-      ],
-      hua_wiang: [
-        {lat: 18.298752, lng: 99.508562}, {lat: 18.296872, lng: 99.521652},
-        {lat: 18.285632, lng: 99.518732}, {lat: 18.287512, lng: 99.505642},
-        {lat: 18.298752, lng: 99.508562}
-      ],
-      phra_bat: [
-        {lat: 18.285724, lng: 99.500532}, {lat: 18.283152, lng: 99.523628},
-        {lat: 18.268732, lng: 99.519832}, {lat: 18.271304, lng: 99.496736},
-        {lat: 18.285724, lng: 99.500532}
-      ],
-      chomphu: [
-        {lat: 18.259832, lng: 99.436218}, {lat: 18.255652, lng: 99.452582},
-        {lat: 18.235721, lng: 99.449835}, {lat: 18.238912, lng: 99.433471},
-        {lat: 18.259832, lng: 99.436218}
-      ]
-    };
+   
+    
     
     // Add variable for debouncing
     let mapMoveTimer = null;
@@ -278,21 +240,23 @@
     // Initialize map
     function initMap() {
       // Coordinates for Lampang, Thailand
-      const lampangCoordinates = { lat: 18.2923, lng: 99.4928 };
-      
+      const lampangCoordinates = { lat: 18.289070, lng: 99.491873 };
+       
       // Create new Google Map
       map = new google.maps.Map(document.getElementById('map'), {
         center: lampangCoordinates,
-        zoom: 16,
+        zoom: 17,
         mapTypeId: 'satellite'
       });
 
+      
+      drawAllDistrictBoundaries();
+      addDistrictMarkers();
       // Set initial status
       document.getElementById('loading').textContent = "Loading grid metadata...";
       
       // Load grid_metadata.json
       loadGridMetadata();
-      
       // Add event listener for map bounds changes with debouncing
       map.addListener('bounds_changed', () => {
         // If currently loading, stop the loading
@@ -387,7 +351,7 @@
         isLoading = false;
         return;
       }
-      
+
       document.getElementById('loading').textContent = `Loading ${cellsToLoad.length} cells...`;
       
       try {
@@ -629,6 +593,21 @@
         }
       }
     });
+    
+    function getDistrictColor(selectedDistrictId) {
+    const districtColors = {
+      wiang_nuea: "#FF5733",  // สีแดงส้ม
+      bo_haeo: "#33FF57",     // สีเขียว
+      pichai: "#3357FF",      // สีน้ำเงิน
+      sob_tui: "#F3FF33",     // สีเหลือง
+      suan_dok: "#FF33A6",    // สีชมพู
+      hua_wiang: "#33FFF3",   // สีฟ้า
+      phra_bat: "#A633FF",    // สีม่วง
+      chomphu: "#FF8C33"      // สีส้ม
+    };
+
+  return districtColors[selectedDistrictId] || "#FF0000"; // ค่าเริ่มต้นเป็นสีดำถ้าไม่พบ
+}
 
     // Function to draw district boundary
     function drawDistrictBoundary(districtId) {
@@ -645,10 +624,10 @@
         // Create polygon for fill
         currentBoundaryPolygon = new google.maps.Polygon({
           paths: districtBoundaries[districtId],
-          strokeColor: '#FF0000',
+          strokeColor: getDistrictColor(districtId),
           strokeOpacity: 0,
           strokeWeight: 0,
-          fillColor: '#FF0000',
+          fillColor: getDistrictColor(districtId),
           fillOpacity: 0.05,
           map: map
         });
@@ -661,19 +640,9 @@
         currentBoundaryPolyline = new google.maps.Polyline({
           path: coordinates,
           geodesic: true,
-          strokeColor: '#FF0000',
-          strokeOpacity: 0,
-          strokeWeight: 0,
-          icons: [{
-            icon: {
-              path: google.maps.SymbolPath.CIRCLE,
-              fillColor: '#FF0000',
-              fillOpacity: 1,
-              scale: 1.2
-            },
-            offset: '0',
-            repeat: '7px'
-          }],
+          strokeColor: getDistrictColor(districtId),
+          strokeOpacity: 1,
+          strokeWeight: 3,
           map: map
         });
         
@@ -692,6 +661,64 @@
         });
       }
     }
+
+// Function to add markers with district names at their centers
+function addDistrictMarkers() {
+      // Mapping of district IDs to Thai names
+      const districtNames = {
+        wiang_nuea: "เวียงเหนือ",
+        bo_haeo: "บ่อแฮ้ว",
+        pichai: "พิชัย",
+        sob_tui: "สบตุ๋ย",
+        suan_dok: "สวนดอก",
+        hua_wiang: "หัวเวียง",
+        phra_bat: "พระบาท",
+        chomphu: "ชมพู"
+      };
+
+      // Loop through each district in districtCoordinates
+      Object.keys(districtCoordinates).forEach(districtId => {
+        const position = districtCoordinates[districtId];
+        const districtName = districtNames[districtId];
+
+        // Create a marker for each district
+        const marker = new google.maps.Marker({
+          position: position,
+          map: map,
+          title: districtName, // Tooltip when hovering
+          label: {
+            text: districtName, // Display the district name on the marker
+            color: "white", // Text color
+            fontSize: "16px", // Text size
+            
+          },
+          icon: {
+            path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW, // Use a circle as the marker icon
+            scale: 8, // Size of the marker
+            fillColor: getDistrictColor(districtId), // Use district-specific color
+            fillOpacity: 0.8,
+            strokeWeight: 1
+          }
+        });
+      });
+    }
+
+    function drawAllDistrictBoundaries() {
+      Object.keys(districtBoundaries).forEach(districtId => {
+        const boundaryPolygon = new google.maps.Polygon({
+          paths: districtBoundaries[districtId],
+          strokeColor: getDistrictColor(districtId),
+          strokeOpacity: 1,
+          strokeWeight: 3,
+          fillColor: getDistrictColor(districtId),
+          fillOpacity: 0.05,
+          map: map
+        });
+
+        districtPolygons.push(boundaryPolygon); // Store in districtPolygons instead of currentPolygons
+      });
+    }
+
 
     // Initialize map when page loads
     window.onload = initMap;
